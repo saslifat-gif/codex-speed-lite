@@ -1,0 +1,31 @@
+# Local environments and Python caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated app bundles, compiler caches, and local backups
+build/
+backups/
+*.app/
+*.backup-*
+*.bak
+*.tmp
+.DS_Store
+
+# Credentials, local configuration, and private measurement history
+.env
+.env.*
+auth.json
+credentials*.json
+config.toml
+*.key
+*.pem
+api-metrics.json
+history-v3/
+*.jsonl
+*.log
+*.prof
