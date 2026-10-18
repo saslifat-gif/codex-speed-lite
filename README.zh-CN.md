@@ -10,7 +10,7 @@
 
 <img src="docs/images/menu-bar.png" alt="菜单栏速度指示器" width="120">
 
-<img src="docs/images/menu.png" alt="Codex Speed 菜单，显示请求吞吐率、响应延迟和运行状态" width="310">
+<img src="docs/images/menu-zh-CN.png" alt="Codex Speed 中文菜单，显示请求吞吐率、响应延迟和运行状态" width="310">
 
 *截图使用演示数据，不包含私人使用记录。显示的是请求吞吐率，并非纯粹的模型生成速度。*
 
@@ -37,6 +37,10 @@ open "$HOME/Applications/Codex Speed Lite.app"
 ```
 
 如果已有菜单栏应用在运行，请先退出，再替换应用文件。
+
+## 切换应用语言
+
+选择 **Details（详细信息）→ Language / 语言 → 简体中文**。也可选择 **English** 或 **跟随系统**。切换立即生效并自动记住，无需重启监测器，也不会改变系统语言。
 
 ## 开始监测
 

@@ -38,6 +38,10 @@ open "$HOME/Applications/Codex Speed Lite.app"
 
 Close an existing menu-bar display before replacing it.
 
+## App language
+
+Choose **Details → Language / 语言 → English or 简体中文**. The default follows your system language. Changes apply immediately and are remembered; no monitor restart is needed.
+
 ## Start monitoring
 
 From the checkout folder:

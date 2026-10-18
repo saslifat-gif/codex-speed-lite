@@ -47,4 +47,55 @@ func runSelfTests() throws {
     precondition(row.frame.width == 310 && row.value.stringValue == "≈50 tokens/s")
     precondition(NSImage(systemSymbolName: "speedometer", accessibilityDescription: nil) != nil)
     print("PASS: native menu row and monochrome system symbol")
+    let resource = Bundle.main.resourceURL!.appendingPathComponent("zh-Hans.lproj/Localizable.strings")
+    precondition(FileManager.default.fileExists(atPath: resource.path), "Chinese interface resources must be bundled")
+    try runLanguageTests(snapshot)
+}
+
+func runLanguageTests(_ snapshot: CollectorSnapshot) throws {
+    _ = NSApplication.shared
+    precondition(InterfaceLanguage.system.resolved(preferredLanguages: ["zh-Hans-CN", "en-US"]) == "zh-Hans")
+    precondition(InterfaceLanguage.system.resolved(preferredLanguages: ["en-US", "zh-Hans"]) == "en")
+    precondition(InterfaceLanguage.english.resolved(preferredLanguages: ["zh-Hans"]) == "en")
+    let chinese = Localizer(language: .simplifiedChinese)
+    precondition(chinese.text("Details") == "详细信息")
+    let compact = CompactReadout(snapshot: snapshot, legacy: false, now: 121, localizer: chinese)
+    precondition(compact.speed == "≈28 token/秒")
+    precondition(compact.subtitle == "2 个请求 · 最近一分钟 · 所有对话")
+    precondition(compact.delay == "2.86 秒" && compact.updated == "11 秒前")
+    precondition(compact.activity == "2 个请求运行中")
+    let detail = APIReadout(snapshot: snapshot, legacy: false, now: 121, localizer: chinese)
+    precondition(detail.average.contains("2 个样本") && detail.diagnostic.contains("API 未返回最终 token 用量"))
+    precondition(CompactReadout(snapshot: snapshot, legacy: false, now: 200, localizer: chinese).subtitle == "监测器离线")
+
+    let suite = "local.codex.speedlite.language-tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    precondition(InterfaceLanguage.saved(in: defaults) == .system)
+    InterfaceLanguage.simplifiedChinese.save(in: defaults)
+    precondition(InterfaceLanguage.saved(in: defaults) == .simplifiedChinese)
+
+    // Exercise the real menu action without changing the user's actual preferences.
+    let display = App(preferences: defaults)
+    display.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
+    display.timer?.invalidate()
+    defer { NSStatusBar.system.removeStatusItem(display.item) }
+    display.latestSnapshot = CollectorSnapshot(
+        schemaVersion: 3, updatedAt: Date().timeIntervalSince1970, storageOK: true,
+        activeRequests: snapshot.activeRequests, lastCompleted: snapshot.lastCompleted,
+        lastIssue: snapshot.lastIssue, recent: snapshot.recent)
+    display.renderSnapshot()
+    precondition(display.delay.label.stringValue == "响应延迟")
+    precondition(display.heading.value.stringValue == "≈28 token/秒")
+    let englishOption = display.languageMenu.items.first { $0.representedObject as? String == "en" }!
+    display.changeLanguage(englishOption)
+    precondition(display.delay.label.stringValue == "Response delay")
+    precondition(display.heading.value.stringValue == "≈28 tokens/s")
+    precondition(englishOption.state == .on && InterfaceLanguage.saved(in: defaults) == .english)
+    let chineseOption = display.languageMenu.items.first { $0.representedObject as? String == "zh-Hans" }!
+    display.changeLanguage(chineseOption)
+    precondition(display.more.title == "详细信息" && chineseOption.state == .on && englishOption.state == .off)
+    precondition(display.rows[9].title.contains("API 未返回最终 token 用量"))
+    precondition(InterfaceLanguage.saved(in: defaults) == .simplifiedChinese)
+    print("PASS: Chinese readouts, system selection, saved preference, and immediate bidirectional menu switching")
 }

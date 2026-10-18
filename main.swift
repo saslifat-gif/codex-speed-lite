@@ -1,6 +1,5 @@
 import AppKit
 
-// Native menu material comes from NSMenu; these views only lay out readable labels.
 final class MetricMenuRow: NSView {
     let label: NSTextField
     let value: NSTextField
@@ -37,16 +36,34 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let worker = DispatchQueue(label: "local.codex.speedlite.metadata", qos: .utility)
     let menu = NSMenu()
     let details = NSMenu()
+    let languageMenu = NSMenu()
+    let more = NSMenuItem()
+    let languageItem = NSMenuItem()
+    let history = NSMenuItem()
+    let method = NSMenuItem()
+    let restore = NSMenuItem()
+    let quit = NSMenuItem()
     let rows = (0..<12).map { _ in NSMenuItem(title: "—", action: nil, keyEquivalent: "") }
     let heading = MetricMenuRow("Codex Speed", emphasized: true, height: 29)
-    let subtitle = MetricMenuRow("Waiting for monitor", secondary: true, height: 21)
-    let delay = MetricMenuRow("Response delay")
-    let activity = MetricMenuRow("Activity")
-    let updated = MetricMenuRow("Last measured")
+    let subtitle = MetricMenuRow("", secondary: true, height: 21)
+    let delay = MetricMenuRow("")
+    let activity = MetricMenuRow("")
+    let updated = MetricMenuRow("")
+    let preferences: UserDefaults
+    var language: InterfaceLanguage
+    var latestSnapshot: CollectorSnapshot?
+    var latestLegacy = false
+    var latestRoute = "Configured routing: cannot read Codex config"
     var item: NSStatusItem!
     var timer: Timer?
     var busy = false
     var showOnLoad = CommandLine.arguments.contains("--show")
+
+    init(preferences: UserDefaults = .standard) {
+        self.preferences = preferences
+        language = InterfaceLanguage.saved(in: preferences)
+        super.init()
+    }
 
     func addView(_ view: NSView) {
         let row = NSMenuItem()
@@ -56,42 +73,46 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        menu.delegate = self
-        details.delegate = self
-        menu.autoenablesItems = false
-        details.autoenablesItems = false
+        for submenu in [menu, details, languageMenu] {
+            submenu.autoenablesItems = false
+            submenu.delegate = self
+        }
         addView(heading)
         addView(subtitle)
         menu.addItem(.separator())
         addView(delay)
         addView(activity)
         addView(updated)
-        heading.toolTip = "Recent request throughput: total output tokens divided by total request duration. Includes reasoning and API waiting; excludes local tools. Not pure generation speed."
-        subtitle.toolTip = "Completed requests in the last minute, across all observed chats and subagents. Concurrent request durations are summed."
-        delay.toolTip = "Time to the last completed request’s first observable text, reasoning-summary, or tool-input output. Hidden reasoning may come earlier."
-        updated.toolTip = "Age of the last completed sample, not the snapshot file."
         menu.addItem(.separator())
-        let more = NSMenuItem(title: "Details", action: nil, keyEquivalent: "")
         more.submenu = details
         menu.addItem(more)
+        languageItem.submenu = languageMenu
+        details.addItem(languageItem)
+        for choice in InterfaceLanguage.allCases {
+            let option = NSMenuItem(title: "", action: #selector(changeLanguage), keyEquivalent: "")
+            option.representedObject = choice.rawValue
+            option.target = self
+            languageMenu.addItem(option)
+        }
+        details.addItem(.separator())
         for row in rows {
             row.isEnabled = false
             details.addItem(row)
         }
         details.addItem(.separator())
-        let history = NSMenuItem(title: "Open History…", action: #selector(openHistory), keyEquivalent: "")
+        history.action = #selector(openHistory)
         history.target = self
         details.addItem(history)
-        let method = NSMenuItem(title: "About Measurements…", action: #selector(openMethod), keyEquivalent: "")
+        method.action = #selector(openMethod)
         method.target = self
         details.addItem(method)
         details.addItem(.separator())
-        let restore = NSMenuItem(title: "Restore Direct Connection…", action: #selector(restoreDirect), keyEquivalent: "")
+        restore.action = #selector(restoreDirect)
         restore.target = self
         details.addItem(restore)
-        let quit = NSMenuItem(title: "Quit Codex Speed", action: #selector(quitApp), keyEquivalent: "q")
+        quit.action = #selector(quitApp)
         quit.target = self
-        quit.toolTip = "The relay stays running so active Codex connections are not interrupted."
+        quit.keyEquivalent = "q"
         menu.addItem(quit)
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.menu = menu
@@ -102,18 +123,56 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.button?.image = configured
             item.button?.imagePosition = .imageLeading
         }
-        item.button?.title = "— t/s"
         item.button?.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        item.button?.setAccessibilityLabel("Codex Speed. Recent request throughput.")
+        applyLanguage()
+        renderSnapshot()
         timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
         timer?.tolerance = 0.2
         RunLoop.main.add(timer!, forMode: .common)
         refresh()
     }
 
+    func applyLanguage() {
+        let l = Localizer(language: language)
+        for (row, key) in [(delay, "Response delay"), (activity, "Activity"), (updated, "Last measured")] {
+            row.label.stringValue = l.text(key)
+        }
+        for (option, key) in [(more, "Details"), (languageItem, "Language / 语言"),
+                              (history, "Open History…"), (method, "About Measurements…"),
+                              (restore, "Restore Direct Connection…"), (quit, "Quit Codex Speed")] {
+            option.title = l.text(key)
+        }
+        for option in languageMenu.items {
+            guard let raw = option.representedObject as? String, let choice = InterfaceLanguage(rawValue: raw) else { continue }
+            switch choice {
+            case .system: option.title = l.text("System Default")
+            case .english: option.title = "English"
+            case .simplifiedChinese: option.title = "简体中文"
+            }
+            option.state = choice == language ? .on : .off
+        }
+        heading.toolTip = l.text("Recent request throughput: total output tokens divided by total request duration. Includes reasoning and API waiting; excludes local tools. Not pure generation speed.")
+        subtitle.toolTip = l.text("Completed requests in the last minute, across all observed chats and subagents. Concurrent request durations are summed.")
+        delay.toolTip = l.text("Time to the last completed request’s first observable text, reasoning-summary, or tool-input output. Hidden reasoning may come earlier.")
+        updated.toolTip = l.text("Age of the last completed sample, not the snapshot file.")
+        quit.toolTip = l.text("The relay stays running so active Codex connections are not interrupted.")
+        item.button?.setAccessibilityLabel(l.text("Codex Speed. Recent request throughput."))
+    }
+
+    @objc func changeLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let choice = InterfaceLanguage(rawValue: raw) else { return }
+        language = choice
+        choice.save(in: preferences)
+        applyLanguage()
+        renderSnapshot()
+    }
+
     @objc func quitApp() { NSApp.terminate(nil) }
     func menuWillOpen(_ menu: NSMenu) { refresh() }
-    @objc func openMethod() { NSWorkspace.shared.open(home.appendingPathComponent(".local/src/codex-speed-lite/README.md")) }
+    @objc func openMethod() {
+        let name = language.resolved() == "zh-Hans" ? "README.zh-CN.md" : "README.md"
+        NSWorkspace.shared.open(home.appendingPathComponent(".local/src/codex-speed-lite/\(name)"))
+    }
     @objc func openHistory() {
         let folder = home.appendingPathComponent(".local/share/codex-speed-lite/history-v3")
         if FileManager.default.fileExists(atPath: folder.path) { NSWorkspace.shared.open(folder) }
@@ -121,11 +180,12 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func restoreDirect() {
+        let l = Localizer(language: language)
         let alert = NSAlert()
-        alert.messageText = "Restore Codex’s direct connection?"
-        alert.informativeText = "This removes only the monitor’s configuration. Restart Codex afterward. The relay stays running to avoid interrupting current work."
-        alert.addButton(withTitle: "Restore")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = l.text("Restore Codex’s direct connection?")
+        alert.informativeText = l.text("This removes only the monitor’s configuration. Restart Codex afterward. The relay stays running to avoid interrupting current work.")
+        alert.addButton(withTitle: l.text("Restore"))
+        alert.addButton(withTitle: l.text("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         let task = Process()
         task.executableURL = home.appendingPathComponent(".local/src/codex-speed-lite/.venv/bin/python")
@@ -135,11 +195,29 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         task.terminationHandler = { process in
             DispatchQueue.main.async {
                 if process.terminationStatus == 0 { self.refresh() }
-                else { self.rows[10].title = "Restore failed · see About Measurements" }
+                else { self.rows[10].title = Localizer(language: self.language).text("Restore failed · see About Measurements") }
             }
         }
         do { try task.run() }
-        catch { rows[10].title = "Could not run restore helper" }
+        catch { rows[10].title = l.text("Could not run restore helper") }
+    }
+
+    func renderSnapshot() {
+        let l = Localizer(language: language)
+        let now = Date().timeIntervalSince1970
+        let view = APIReadout(snapshot: latestSnapshot, legacy: latestLegacy, now: now, localizer: l)
+        let compact = CompactReadout(snapshot: latestSnapshot, legacy: latestLegacy, now: now, localizer: l)
+        item.button?.title = compact.menuBar
+        heading.set(compact.speed)
+        subtitle.label.stringValue = compact.subtitle
+        delay.set(compact.delay)
+        activity.set(compact.activity)
+        updated.set(compact.updated)
+        let titles = [view.average, view.scope, view.active, view.latest, view.firstOutput,
+                      view.age, view.engine, view.quality, l.text("Generation-only speed: not established"),
+                      view.diagnostic, l.text(latestRoute), view.service]
+        for (row, title) in zip(rows, titles) { row.title = title }
+        item.button?.toolTip = l.format("%@. %@. Not pure generation speed.", view.average, view.service)
     }
 
     func refresh() {
@@ -155,20 +233,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let route = configuredRouting(try? String(contentsOf: configURL, encoding: .utf8))
             DispatchQueue.main.async {
                 self.busy = false
-                let now = Date().timeIntervalSince1970
-                let view = APIReadout(snapshot: snapshot, legacy: legacy, now: now)
-                let compact = CompactReadout(snapshot: snapshot, legacy: legacy, now: now)
-                self.item.button?.title = compact.menuBar
-                self.heading.set(compact.speed)
-                self.subtitle.label.stringValue = compact.subtitle
-                self.delay.set(compact.delay)
-                self.activity.set(compact.activity)
-                self.updated.set(compact.updated)
-                let titles = [view.average, view.scope, view.active, view.latest, view.firstOutput,
-                              view.age, view.engine, view.quality, "Generation-only speed: not established",
-                              view.diagnostic, route, view.service]
-                for (row, title) in zip(self.rows, titles) { row.title = title }
-                self.item.button?.toolTip = "\(view.average). \(view.service). Not pure generation speed."
+                self.latestSnapshot = snapshot
+                self.latestLegacy = legacy
+                self.latestRoute = route
+                self.renderSnapshot()
                 if self.showOnLoad {
                     self.showOnLoad = false
                     self.item.button?.performClick(nil)
