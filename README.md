@@ -1,6 +1,16 @@
+<img src="docs/images/app-icon.png" alt="Codex Speed Lite icon" width="72">
+
 # Codex Speed Lite
 
 A small macOS menu-bar app that shows Codex request throughput, response delay, and activity. Technical details are tucked into **Details**.
+
+## Preview
+
+<img src="docs/images/menu-bar.png" alt="Menu-bar speed indicator" width="120">
+
+<img src="docs/images/menu.png" alt="Codex Speed menu showing throughput, response delay, and activity" width="310">
+
+*Demo values—not private usage data. Speed is request throughput, not pure generation speed.*
 
 ## Requirements
 
