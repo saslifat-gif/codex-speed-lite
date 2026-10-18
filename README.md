@@ -2,6 +2,8 @@
 
 # Codex Speed Lite
 
+**English** | [简体中文](README.zh-CN.md)
+
 A small macOS menu-bar app that shows Codex request throughput, response delay, and activity. Technical details are tucked into **Details**.
 
 ## Preview
