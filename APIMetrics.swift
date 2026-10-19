@@ -194,12 +194,14 @@ struct CompactReadout {
             speed = "—"
             if !live { subtitle = l.text("Monitor offline") }
             else if snapshot.activeRequests > 0 { subtitle = l.text("Measuring…") }
-            else { subtitle = l.text("No recent requests") }
+            else { subtitle = l.text("Waiting for Codex requests") }
         }
         if !live { activity = l.text("Unavailable") }
         else if snapshot.activeRequests > 0 { activity = l.format("%d running", snapshot.activeRequests) }
         else { activity = l.text("Idle") }
-        delay = snapshot.lastCompleted?.firstOutputSeconds.map { l.format("%.2f s", $0) } ?? "—"
+        if live, let last = snapshot.lastCompleted, now - last.finishedAt <= Double(snapshot.recent.windowSeconds) {
+            delay = last.firstOutputSeconds.map { l.format("%.2f s", $0) } ?? "—"
+        } else { delay = "—" }
         if let last = snapshot.lastCompleted {
             let age = max(0, now - last.finishedAt)
             updated = age < 5 ? l.text("Just now") : ageLabel(age, localizer: l)

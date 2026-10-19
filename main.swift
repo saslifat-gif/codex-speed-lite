@@ -39,6 +39,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let languageMenu = NSMenu()
     let more = NSMenuItem()
     let languageItem = NSMenuItem()
+    let reconnect = NSMenuItem()
     let history = NSMenuItem()
     let method = NSMenuItem()
     let restore = NSMenuItem()
@@ -57,6 +58,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var item: NSStatusItem!
     var timer: Timer?
     var busy = false
+    var reconnecting = false
     var showOnLoad = CommandLine.arguments.contains("--show")
 
     init(preferences: UserDefaults = .standard) {
@@ -94,6 +96,9 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             option.target = self
             languageMenu.addItem(option)
         }
+        reconnect.action = #selector(reconnectDesktop)
+        reconnect.target = self
+        details.addItem(reconnect)
         details.addItem(.separator())
         for row in rows {
             row.isEnabled = false
@@ -138,6 +143,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             row.label.stringValue = l.text(key)
         }
         for (option, key) in [(more, "Details"), (languageItem, "Language / 语言"),
+                              (reconnect, "Reconnect Codex Desktop…"),
                               (history, "Open History…"), (method, "About Measurements…"),
                               (restore, "Restore Direct Connection…"), (quit, "Quit Codex Speed")] {
             option.title = l.text(key)
@@ -153,6 +159,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         heading.toolTip = l.text("Recent request throughput: total output tokens divided by total request duration. Includes reasoning and API waiting; excludes local tools. Not pure generation speed.")
         subtitle.toolTip = l.text("Completed requests in the last minute, across all observed chats and subagents. Concurrent request durations are summed.")
+            + "\n" + l.text("If Codex is working but nothing is measured, use Details → Reconnect Codex Desktop…")
         delay.toolTip = l.text("Time to the last completed request’s first observable text, reasoning-summary, or tool-input output. Hidden reasoning may come earlier.")
         updated.toolTip = l.text("Age of the last completed sample, not the snapshot file.")
         quit.toolTip = l.text("The relay stays running so active Codex connections are not interrupted.")
@@ -179,27 +186,66 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         else { openMethod() }
     }
 
+    func runControl(_ command: String, completion: @escaping (Bool) -> Void) {
+        let task = Process()
+        task.executableURL = home.appendingPathComponent(".local/src/codex-speed-lite/.venv/bin/python")
+        task.arguments = [home.appendingPathComponent(".local/src/codex-speed-lite/control.py").path, command]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        task.terminationHandler = { process in
+            DispatchQueue.main.async { completion(process.terminationStatus == 0) }
+        }
+        do { try task.run() }
+        catch { completion(false) }
+    }
+
+    func showReconnectError(_ key: String) {
+        let l = Localizer(language: language)
+        let alert = NSAlert()
+        alert.messageText = l.text("Could not reconnect")
+        alert.informativeText = l.text(key)
+        alert.runModal()
+    }
+
+    @objc func reconnectDesktop() {
+        guard !reconnecting else { return }
+        let l = Localizer(language: language)
+        let alert = NSAlert()
+        alert.messageText = l.text("Reconnect desktop monitoring?")
+        alert.informativeText = l.text("This enables local monitoring, then fully quits and reopens the Codex desktop app. Active tasks will be interrupted. Restarting only the CLI daemon does not apply desktop settings.")
+        alert.addButton(withTitle: l.text("Reconnect"))
+        alert.addButton(withTitle: l.text("Cancel"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        reconnecting = true
+        renderSnapshot()
+        runControl("enable") { enabled in
+            guard enabled else {
+                self.reconnecting = false
+                self.renderSnapshot()
+                self.showReconnectError("Could not enable monitoring. Check that the helper and collector are installed.")
+                return
+            }
+            DesktopClient.restart { error in
+                self.reconnecting = false
+                self.renderSnapshot()
+                if let error { self.showReconnectError(error.messageKey) }
+                self.refresh()
+            }
+        }
+    }
+
     @objc func restoreDirect() {
         let l = Localizer(language: language)
         let alert = NSAlert()
         alert.messageText = l.text("Restore Codex’s direct connection?")
-        alert.informativeText = l.text("This removes only the monitor’s configuration. Restart Codex afterward. The relay stays running to avoid interrupting current work.")
+        alert.informativeText = l.text("This removes only the monitor’s configuration. Fully quit and reopen the desktop app afterward. The relay stays running to avoid interrupting current work.")
         alert.addButton(withTitle: l.text("Restore"))
         alert.addButton(withTitle: l.text("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let task = Process()
-        task.executableURL = home.appendingPathComponent(".local/src/codex-speed-lite/.venv/bin/python")
-        task.arguments = [home.appendingPathComponent(".local/src/codex-speed-lite/control.py").path, "disable"]
-        task.standardOutput = FileHandle.nullDevice
-        task.standardError = FileHandle.nullDevice
-        task.terminationHandler = { process in
-            DispatchQueue.main.async {
-                if process.terminationStatus == 0 { self.refresh() }
-                else { self.rows[10].title = Localizer(language: self.language).text("Restore failed · see About Measurements") }
-            }
+        runControl("disable") { success in
+            if success { self.refresh() }
+            else { self.rows[10].title = Localizer(language: self.language).text("Restore failed · see About Measurements") }
         }
-        do { try task.run() }
-        catch { rows[10].title = l.text("Could not run restore helper") }
     }
 
     func renderSnapshot() {
@@ -209,7 +255,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let compact = CompactReadout(snapshot: latestSnapshot, legacy: latestLegacy, now: now, localizer: l)
         item.button?.title = compact.menuBar
         heading.set(compact.speed)
-        subtitle.label.stringValue = compact.subtitle
+        subtitle.label.stringValue = reconnecting ? l.text("Reconnecting…") : compact.subtitle
+        reconnect.isEnabled = !reconnecting
         delay.set(compact.delay)
         activity.set(compact.activity)
         updated.set(compact.updated)

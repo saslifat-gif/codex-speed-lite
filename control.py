@@ -88,7 +88,7 @@ def enable():
         if BLOCK not in text:
             raise RuntimeError('Monitor configuration was edited; refusing to overwrite it.')
         relay()
-        print('Monitor already configured. Restart Codex to apply.')
+        print('Monitor already configured. Fully quit and reopen the Codex desktop app to apply; restarting only the CLI daemon is not sufficient.')
         return
     if data.get('model_provider', 'openai') != 'openai' or 'openai_base_url' in data or 'openai' in data.get('model_providers', {}):
         raise RuntimeError('Existing provider override found; refusing to change it automatically.')
@@ -97,7 +97,7 @@ def enable():
     if CONFIG.read_text() != text:
         raise RuntimeError('Configuration changed during setup; try again.')
     save(BLOCK + '\n' + text)
-    print('Local API monitor enabled. Restart Codex to apply. Account and model unchanged.')
+    print('Local API monitor enabled. Fully quit and reopen the Codex desktop app to apply; restarting only the CLI daemon is not sufficient. Account and model unchanged.')
 
 
 def disable():
@@ -108,7 +108,7 @@ def disable():
     if BLOCK not in text:
         raise RuntimeError('Monitor block was edited; remove its marked section manually.')
     save(text.replace(BLOCK + '\n', '', 1) if BLOCK + '\n' in text else text.replace(BLOCK, '', 1))
-    print('Direct connection restored. Restart Codex. Relay remains up for existing connections.')
+    print('Direct connection restored. Fully quit and reopen the Codex desktop app when ready. Relay remains up for existing connections.')
 
 
 def restart():

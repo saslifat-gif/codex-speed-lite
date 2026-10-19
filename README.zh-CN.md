@@ -50,11 +50,13 @@ open "$HOME/Applications/Codex Speed Lite.app"
 .venv/bin/python control.py enable
 ```
 
-等待当前任务完成后，重启 Codex 的后台服务。仅关闭窗口不一定会停止该服务。随后正常发送一条消息，即可获得首次测量结果。
+等待当前任务完成后，选择 **详细信息 → 重新连接 Codex 桌面应用…** 并确认。这会启用监测，并完全退出、重新打开实际的桌面应用（部分 Mac 上显示为 **ChatGPT**）。正在进行的任务会被中断，但程序不会强制退出应用。
+
+仅重启 `codex app-server daemon` **不会**更新桌面应用独立后台的连接设置。重新连接后，正常发送一条 Codex 消息即可获得新测量。没有请求时，菜单会显示等待状态，不再把昨天的响应延迟当作当前数据。
 
 ## 停止监测
 
-选择 **Details → Restore Direct Connection…（恢复直接连接）**，待当前工作结束后重启 Codex。
+选择 **Details → Restore Direct Connection…（恢复直接连接）**，待当前工作结束后完全退出、重新打开 Codex 桌面应用。此时不要选择“重新连接”，因为它会再次启用监测。
 
 退出菜单栏应用只会关闭显示界面；本地转发服务仍会运行，避免中断正在进行的请求。
 

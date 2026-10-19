@@ -50,11 +50,13 @@ From the checkout folder:
 .venv/bin/python control.py enable
 ```
 
-Finish any running tasks, then restart Codex’s background service. Closing its window may not stop that service. Send a normal message to get your first measurement.
+Finish any running tasks, then choose **Details → Reconnect Codex Desktop…** and confirm. This enables monitoring and fully quits/reopens the actual desktop app (named **ChatGPT** on some Macs). It interrupts active tasks; it never force-quits.
+
+Restarting only `codex app-server daemon` does **not** reload the desktop app’s separate backend. Send a normal Codex message after reconnecting to get a fresh measurement. If no requests are measured, the menu waits rather than showing yesterday’s response delay.
 
 ## Stop monitoring
 
-Choose **Details → Restore Direct Connection…**, then restart Codex when your work is finished.
+Choose **Details → Restore Direct Connection…**, then fully quit and reopen the Codex desktop app when your work is finished. Do not use Reconnect for this—it enables monitoring again.
 
 Quitting the menu-bar app only hides the display; the relay stays running so current requests are not interrupted.
 

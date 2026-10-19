@@ -28,6 +28,12 @@ func runSelfTests() throws {
     precondition(compact.updated == "11 s ago")
     let offline = CompactReadout(snapshot: snapshot, legacy: false, now: 200)
     precondition(offline.speed == "—" && offline.subtitle == "Monitor offline")
+    precondition(offline.delay == "—", "A stale sample must not look like a current response delay")
+    let idleSnapshot = CollectorSnapshot(schemaVersion: 3, updatedAt: 200, storageOK: true,
+        activeRequests: 0, lastCompleted: snapshot.lastCompleted, lastIssue: nil,
+        recent: RecentMeasurements(windowSeconds: 60, sampleCount: 0, outputTokens: 0, requestSeconds: 0))
+    let idle = CompactReadout(snapshot: idleSnapshot, legacy: false, now: 200)
+    precondition(idle.delay == "—" && idle.subtitle == "Waiting for Codex requests")
     precondition(CompactReadout(snapshot: nil, legacy: true, now: 0).subtitle == "Restart required")
 
     // Both display modes must use the same inclusive heartbeat window.
@@ -95,6 +101,7 @@ func runLanguageTests(_ snapshot: CollectorSnapshot) throws {
     let chineseOption = display.languageMenu.items.first { $0.representedObject as? String == "zh-Hans" }!
     display.changeLanguage(chineseOption)
     precondition(display.more.title == "详细信息" && chineseOption.state == .on && englishOption.state == .off)
+    precondition(display.reconnect.title == "重新连接 Codex 桌面应用…" && display.reconnect.isEnabled)
     precondition(display.rows[9].title.contains("API 未返回最终 token 用量"))
     precondition(InterfaceLanguage.saved(in: defaults) == .simplifiedChinese)
     print("PASS: Chinese readouts, system selection, saved preference, and immediate bidirectional menu switching")

@@ -10,11 +10,10 @@
 "Restore Direct Connection…" = "恢复直接连接…";
 "Quit Codex Speed" = "退出 Codex Speed";
 "Restore Codex’s direct connection?" = "恢复 Codex 的直接连接？";
-"This removes only the monitor’s configuration. Restart Codex afterward. The relay stays running to avoid interrupting current work." = "这只会移除监测器的连接配置，之后请重启 Codex。本地转发服务会继续运行，避免中断当前工作。";
+"This removes only the monitor’s configuration. Fully quit and reopen the desktop app afterward. The relay stays running to avoid interrupting current work." = "这只会移除监测器的连接配置，之后请完全退出并重新打开 Codex 桌面应用。本地转发服务会继续运行，避免中断当前工作。";
 "Restore" = "恢复";
 "Cancel" = "取消";
 "Restore failed · see About Measurements" = "恢复失败 · 请查看“关于测量方式”";
-"Could not run restore helper" = "无法运行恢复程序";
 "Codex Speed. Recent request throughput." = "Codex Speed，最近的请求吞吐率。";
 "Recent request throughput: total output tokens divided by total request duration. Includes reasoning and API waiting; excludes local tools. Not pure generation speed." = "请求吞吐率为输出 token 总数除以请求总耗时，包含推理及 API 等待，不含本地工具执行时间，并非纯模型生成速度。";
 "Completed requests in the last minute, across all observed chats and subagents. Concurrent request durations are summed." = "统计最近一分钟内完成的请求，包含所有被监测的对话和子代理。并发请求的耗时会相加。";
@@ -88,8 +87,21 @@
 "all chats" = "所有对话";
 "Monitor offline" = "监测器离线";
 "Measuring…" = "正在测量…";
-"No recent requests" = "暂无近期请求";
+"Waiting for Codex requests" = "等待 Codex 请求";
 "%d running" = "%d 个请求运行中";
 "Idle" = "空闲";
 "%.2f s" = "%.2f 秒";
 "Just now" = "刚刚";
+
+"Reconnect Codex Desktop…" = "重新连接 Codex 桌面应用…";
+"Reconnect desktop monitoring?" = "重新连接桌面应用监测？";
+"This enables local monitoring, then fully quits and reopens the Codex desktop app. Active tasks will be interrupted. Restarting only the CLI daemon does not apply desktop settings." = "这将启用本地监测，然后完全退出并重新打开 Codex 桌面应用。正在进行的任务会被中断。仅重启命令行守护进程不会更新桌面应用的连接设置。";
+"Reconnect" = "重新连接";
+"Reconnecting…" = "正在重新连接…";
+"Could not reconnect" = "无法重新连接";
+"Could not enable monitoring. Check that the helper and collector are installed." = "无法启用监测，请检查辅助程序和采集器是否已安装。";
+"If Codex is working but nothing is measured, use Details → Reconnect Codex Desktop…" = "如果 Codex 正在工作却没有测量数据，请选择“详细信息 → 重新连接 Codex 桌面应用…”。";
+"More than one Codex desktop app is running. Close extra copies and retry." = "有多个 Codex 桌面应用正在运行。请先关闭多余的应用，再重试。";
+"Codex desktop app was not found." = "未找到 Codex 桌面应用。";
+"Codex did not quit. Close it manually when your work is safe. No force-quit was performed." = "Codex 未退出。请在工作已妥善保存后手动关闭应用。程序没有强制退出它。";
+"Codex could not be reopened. Start the desktop app manually." = "无法重新打开 Codex，请手动启动桌面应用。";

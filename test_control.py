@@ -28,6 +28,17 @@ class ControlTests(unittest.TestCase):
                 self.assertEqual(config.read_text(), original.replace('memories = true', 'memories = false'))
                 self.assertEqual(config.stat().st_mode & 0o777, 0o600)
 
+    def test_enable_explains_that_the_desktop_client_not_only_the_daemon_must_restart(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = root / 'config.toml'
+            config.write_text('model = "existing-model"\n')
+            output = io.StringIO()
+            with patch.object(control, 'CONFIG', config), patch.object(control, 'ROOT', root), patch.object(control, 'relay'), redirect_stdout(output):
+                control.enable()
+            self.assertIn('desktop app', output.getvalue())
+            self.assertIn('CLI daemon', output.getvalue())
+
     def test_refuses_implicit_restart_of_legacy_relay(self):
         with patch.object(control, 'health_info', return_value={'service': 'codex-speed-lite', 'version': 1}), patch.object(control.subprocess, 'run') as run:
             with self.assertRaisesRegex(RuntimeError, 'explicitly approved restart'):
