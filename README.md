@@ -12,7 +12,7 @@ A small macOS menu-bar app that shows Codex request throughput, response delay, 
 
 <img src="docs/images/menu.png" alt="Codex Speed menu showing throughput, response delay, and activity" width="310">
 
-*Demo values—not private usage data. Speed is request throughput, not pure generation speed.*
+*Demo values—not private usage data. Preview images show the previous labels; the menu now explicitly says “Recent average”, “Last output delay”, and “Last completed”.*
 
 ## Requirements
 
@@ -64,11 +64,13 @@ Quitting the menu-bar app only hides the display; the relay stays running so cur
 
 The number is **total output tokens ÷ total request time** for requests completed in the last minute, across all observed chats.
 
+**Recent average** is historical throughput, so it can remain visible while activity is **Idle** until the window expires. **Last output delay** is the last completed request’s time to its first observable text, reasoning-summary, or tool-input output—not total request time or necessarily the model’s first token. **Last completed** shows that sample’s age.
+
 It includes reasoning and API/network waiting, but excludes local tool execution. It is **not pure token-generation speed**. Missing or failed samples are skipped, not guessed.
 
 ## Privacy
 
-The helper runs locally and forwards requests to the same ChatGPT service. It keeps numerical measurements—not prompts, generated text, or credentials. Local history is available through **Details → Open History…** and is not uploaded to GitHub. It makes no extra AI requests.
+The helper runs locally and forwards requests to the same ChatGPT service. It keeps numerical measurements—not prompts, generated text, or credentials. Local history is available through **Details → Open History…** and is not uploaded to GitHub. It makes no extra AI requests. Cookies are forwarded as supplied but are never retained in a shared relay cookie jar.
 
 ## Tests
 

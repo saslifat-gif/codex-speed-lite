@@ -8,7 +8,7 @@ from pathlib import Path
 import time
 import zlib
 
-from aiohttp import ClientSession, ClientTimeout, WSMsgType, web
+from aiohttp import ClientSession, ClientTimeout, DummyCookieJar, WSMsgType, web
 from collector import SCHEMA, Store, StreamTracker
 
 STATE = Path.home() / '.local/share/codex-speed-lite/api-metrics.json'
@@ -204,7 +204,9 @@ def create_app(path=STATE, upstream='https://chatgpt.com'):
             store.publish()
 
     async def lifecycle(app):
-        async with ClientSession(auto_decompress=False, trust_env=True,
+        # Relay cookies only through headers; never retain one client's session
+        # and silently attach it to another client's HTTP or WebSocket request.
+        async with ClientSession(auto_decompress=False, trust_env=True, cookie_jar=DummyCookieJar(),
                                  timeout=ClientTimeout(total=None, sock_connect=30),
                                  skip_auto_headers={'User-Agent', 'Accept-Encoding', 'Content-Type'}) as client:
             app[CLIENT] = client

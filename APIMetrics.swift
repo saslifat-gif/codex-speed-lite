@@ -188,7 +188,8 @@ struct CompactReadout {
             speed = l.format("≈%@ tokens/s", number)
             let count = snapshot.recent.sampleCount
             let requests = l.format(count == 1 ? "%d request" : "%d requests", count)
-            subtitle = l.format("%@ · last minute · %@", requests, l.text(snapshot.recent.outputTokens < 100 ? "small sample" : "all chats"))
+            let window = l.format("%@ · last %d s", requests, snapshot.recent.windowSeconds)
+            subtitle = window + (snapshot.recent.outputTokens < 100 ? " · " + l.text("small sample") : "")
         } else {
             menuBar = "— t/s"
             speed = "—"
@@ -199,8 +200,9 @@ struct CompactReadout {
         if !live { activity = l.text("Unavailable") }
         else if snapshot.activeRequests > 0 { activity = l.format("%d running", snapshot.activeRequests) }
         else { activity = l.text("Idle") }
-        if live, let last = snapshot.lastCompleted, now - last.finishedAt <= Double(snapshot.recent.windowSeconds) {
-            delay = last.firstOutputSeconds.map { l.format("%.2f s", $0) } ?? "—"
+        if live, let last = snapshot.lastCompleted,
+           last.finishedAt <= now, now - last.finishedAt <= Double(snapshot.recent.windowSeconds) {
+            delay = last.firstOutputSeconds.map { l.format("%.1f s", $0) } ?? "—"
         } else { delay = "—" }
         if let last = snapshot.lastCompleted {
             let age = max(0, now - last.finishedAt)

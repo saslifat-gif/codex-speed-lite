@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from aiohttp import ClientSession, web
+from aiohttp import ClientSession, DummyCookieJar, web
 from api_monitor import create_app
 from test_collector import complete
 
@@ -60,6 +60,11 @@ class ForwardingTests(unittest.IsolatedAsyncioTestCase):
                                     'timing_metrics': {'engine_service_total_ms': 450}})
             return ws
         self.received.append(await request.read())
+        if request.path.endswith('/cookies'):
+            response = web.json_response(dict(request.cookies))
+            if request.query.get('set'):
+                response.set_cookie('upstream_session', 'client-a')
+            return response
         if request.path.endswith('/error'):
             return web.Response(status=429, body=b'upstream error', headers={'Retry-After': '2'})
         if request.path.endswith('/plain'):
@@ -158,6 +163,21 @@ class ForwardingTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(record['engine_timing']['engine_service_total_ms'], 450)
             self.assertEqual(self.snapshot()['recent']['sample_count'], 1)
         self.assertNotIn('secret', self.path.read_text())
+
+    async def test_relay_does_not_share_cookies_between_clients(self):
+        # Use a hostname: aiohttp's default jar rejects IP-address cookies.
+        proxy = await self.serve(create_app(
+            Path(self.tmp.name) / 'cookie-metrics.json',
+            self.upstream_url.replace('127.0.0.1', 'localhost')))
+        async with ClientSession(cookie_jar=DummyCookieJar()) as client:
+            async with client.get(proxy + '/backend-api/codex/cookies?set=1') as response:
+                self.assertIn('upstream_session', response.cookies)
+                await response.read()
+            async with client.get(proxy + '/backend-api/codex/cookies') as response:
+                self.assertEqual(await response.json(), {})
+            async with client.get(proxy + '/backend-api/codex/cookies',
+                                  headers={'Cookie': 'upstream_session=client-b'}) as response:
+                self.assertEqual(await response.json(), {'upstream_session': 'client-b'})
 
     async def test_errors_fixed_destination_and_versioned_health(self):
         async with self.client.post(self.proxy_url + '/backend-api/codex/error') as response:

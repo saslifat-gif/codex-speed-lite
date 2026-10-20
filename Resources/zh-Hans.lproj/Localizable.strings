@@ -2,9 +2,10 @@
 "Details" = "详细信息";
 "Language / 语言" = "语言 / Language";
 "System Default" = "跟随系统";
-"Response delay" = "响应延迟";
+"Recent average" = "近期均速";
+"Last output delay" = "上次输出延迟";
 "Activity" = "运行状态";
-"Last measured" = "最近测量";
+"Last completed" = "上次完成";
 "Open History…" = "打开历史记录…";
 "About Measurements…" = "关于测量方式…";
 "Restore Direct Connection…" = "恢复直接连接…";
@@ -82,15 +83,14 @@
 "≈%@ tokens/s" = "≈%@ token/秒";
 "%d request" = "%d 个请求";
 "%d requests" = "%d 个请求";
-"%@ · last minute · %@" = "%@ · 最近一分钟 · %@";
+"%@ · last %d s" = "%@ · 最近 %d 秒";
 "small sample" = "样本较少";
-"all chats" = "所有对话";
 "Monitor offline" = "监测器离线";
 "Measuring…" = "正在测量…";
 "Waiting for Codex requests" = "等待 Codex 请求";
 "%d running" = "%d 个请求运行中";
 "Idle" = "空闲";
-"%.2f s" = "%.2f 秒";
+"%.1f s" = "%.1f 秒";
 "Just now" = "刚刚";
 
 "Reconnect Codex Desktop…" = "重新连接 Codex 桌面应用…";

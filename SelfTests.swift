@@ -22,8 +22,8 @@ func runSelfTests() throws {
     let compact = CompactReadout(snapshot: snapshot, legacy: false, now: 121)
     precondition(compact.menuBar == "~28 t/s")
     precondition(compact.speed == "≈28 tokens/s")
-    precondition(compact.subtitle == "2 requests · last minute · all chats")
-    precondition(compact.delay == "2.86 s")
+    precondition(compact.subtitle == "2 requests · last 60 s")
+    precondition(compact.delay == "2.9 s")
     precondition(compact.activity == "2 running")
     precondition(compact.updated == "11 s ago")
     let offline = CompactReadout(snapshot: snapshot, legacy: false, now: 200)
@@ -35,6 +35,13 @@ func runSelfTests() throws {
     let idle = CompactReadout(snapshot: idleSnapshot, legacy: false, now: 200)
     precondition(idle.delay == "—" && idle.subtitle == "Waiting for Codex requests")
     precondition(CompactReadout(snapshot: nil, legacy: true, now: 0).subtitle == "Restart required")
+
+    let futureSnapshot = CollectorSnapshot(schemaVersion: 3, updatedAt: 100, storageOK: true,
+        activeRequests: 0, lastCompleted: snapshot.lastCompleted, lastIssue: nil,
+        recent: RecentMeasurements(windowSeconds: 30, sampleCount: 1, outputTokens: 21, requestSeconds: 3.31))
+    let future = CompactReadout(snapshot: futureSnapshot, legacy: false, now: 100)
+    precondition(future.delay == "—", "A future-dated completion must not supply a current delay")
+    precondition(future.subtitle == "1 request · last 30 s · small sample")
 
     // Both display modes must use the same inclusive heartbeat window.
     for offset in [-6.0, -5, 0, 5, 6] {
@@ -67,8 +74,8 @@ func runLanguageTests(_ snapshot: CollectorSnapshot) throws {
     precondition(chinese.text("Details") == "详细信息")
     let compact = CompactReadout(snapshot: snapshot, legacy: false, now: 121, localizer: chinese)
     precondition(compact.speed == "≈28 token/秒")
-    precondition(compact.subtitle == "2 个请求 · 最近一分钟 · 所有对话")
-    precondition(compact.delay == "2.86 秒" && compact.updated == "11 秒前")
+    precondition(compact.subtitle == "2 个请求 · 最近 60 秒")
+    precondition(compact.delay == "2.9 秒" && compact.updated == "11 秒前")
     precondition(compact.activity == "2 个请求运行中")
     let detail = APIReadout(snapshot: snapshot, legacy: false, now: 121, localizer: chinese)
     precondition(detail.average.contains("2 个样本") && detail.diagnostic.contains("API 未返回最终 token 用量"))
@@ -91,11 +98,15 @@ func runLanguageTests(_ snapshot: CollectorSnapshot) throws {
         activeRequests: snapshot.activeRequests, lastCompleted: snapshot.lastCompleted,
         lastIssue: snapshot.lastIssue, recent: snapshot.recent)
     display.renderSnapshot()
-    precondition(display.delay.label.stringValue == "响应延迟")
+    precondition(display.delay.label.stringValue == "上次输出延迟")
+    precondition(display.heading.label.stringValue == "近期均速")
+    precondition(display.updated.label.stringValue == "上次完成")
     precondition(display.heading.value.stringValue == "≈28 token/秒")
     let englishOption = display.languageMenu.items.first { $0.representedObject as? String == "en" }!
     display.changeLanguage(englishOption)
-    precondition(display.delay.label.stringValue == "Response delay")
+    precondition(display.delay.label.stringValue == "Last output delay")
+    precondition(display.heading.label.stringValue == "Recent average")
+    precondition(display.updated.label.stringValue == "Last completed")
     precondition(display.heading.value.stringValue == "≈28 tokens/s")
     precondition(englishOption.state == .on && InterfaceLanguage.saved(in: defaults) == .english)
     let chineseOption = display.languageMenu.items.first { $0.representedObject as? String == "zh-Hans" }!

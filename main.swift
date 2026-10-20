@@ -139,7 +139,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applyLanguage() {
         let l = Localizer(language: language)
-        for (row, key) in [(delay, "Response delay"), (activity, "Activity"), (updated, "Last measured")] {
+        for (row, key) in [(heading, "Recent average"), (delay, "Last output delay"),
+                           (activity, "Activity"), (updated, "Last completed")] {
             row.label.stringValue = l.text(key)
         }
         for (option, key) in [(more, "Details"), (languageItem, "Language / 语言"),
